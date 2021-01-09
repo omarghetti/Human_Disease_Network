@@ -24,7 +24,7 @@ ggraph(network_graph, layout="graphopt") +
   theme_graph(base_size = 11, base_family = "sans") +
   ggtitle("Human Disease Network") 
 
-#Exploratory Analisys
+#Exploratory Analysis
 print(paste("Vertices Number:", vcount(network_graph)))
 print(paste("Genes Number:", sum(V(network_graph)$X1 == "gene")))
 print(paste("Diseases Number:", sum(V(network_graph)$X1!="gene")))
