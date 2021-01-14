@@ -11,7 +11,7 @@ import_libraries <- function(libraries_list) {
 histogram_plot <- function(mapping, scale, x_lab, y_lab, title){
   #gg <- 
   ggplot(mapping=aes(x=mapping)) + 
-    geom_histogram(col="black", fill="#80C58D") + 
+    geom_histogram(col="black", fill="#8B0000") + 
     stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, size=3) +
     scale_y_log10(labels = trans_format("log10", math_format(expr = 10^.x))) +
     scale_x_continuous(x_lab, scale) +
