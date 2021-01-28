@@ -38,7 +38,7 @@ plot_graph <- function(graph, layout, measure, node_s1, node_s2, node_s3, label,
     ggtitle(title) 
 }
 
-plot_pretty_graph <- function(graph, layout, fill, edge_width, title){
+plot_clustering_graph <- function(graph, layout, fill, edge_width, title){
   ggraph(graph, layout=layout) + #  "graphopt" "kk" "dh"
     geom_edge_fan(aes(width=edge_width), colour = "gray66", show.legend = FALSE) +
     geom_node_point(aes(fill=fill), shape=21, col="grey25", size=3, show.legend = FALSE) +
@@ -49,7 +49,7 @@ plot_pretty_graph <- function(graph, layout, fill, edge_width, title){
     ggtitle(title) 
 }
 
-plot_pretty_graph_legend <- function(graph, layout, fill, edge_width, title){
+plot_clustering_graph_with_legend <- function(graph, layout, fill, edge_width, title){
   ggraph(graph, layout=layout) +
     geom_edge_fan(aes(width=edge_width), colour = "gray66", show.legend = FALSE) +
     geom_node_point(aes(fill=fill), shape=21, size=3) +
