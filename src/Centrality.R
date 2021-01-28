@@ -186,7 +186,6 @@ nodes_results$Louvain <- NA
 nodes_results$Fastgreedy <- NA
 nodes_results$Markov <- NA
 nodes_results$Leiden <- NA
-nodes_results$Label_prop <- NA
 nodes_results$Lead_eigen <- NA
 
 #Girvan-Newmann
@@ -216,9 +215,63 @@ plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_resu
 fastgreedy_clusters  = cluster_fast_greedy(network_graph_no_genes, modularity = TRUE,
                                            weights = E(network_graph_no_genes)$weight)
 
-print(paste("N° di communities: ", max(fastgreedy_clusters$membership)))
+print(paste("Fastgreedy communities: ", max(fastgreedy_clusters$membership)))
 fgreedy_df <- label_cluster(fastgreedy_clusters)
 for (n in 1:length(fastgreedy_clusters$membership))
 {
   nodes_results$Fastgreedy[n] <- fgreedy_df$name[fastgreedy_clusters$membership[n]]
 }
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Fastgreedy,
+                         E(network_graph_no_genes)$weight, "Fastgreedy")
+##Markov Clustering
+mat = as_adj(network_graph_no_genes,type = "both",attr = "weight")
+markov_clustering = mcl(mat,addLoops = FALSE, inflation=4, allow1 = TRUE)
+print(paste("Markov Communities:",markov_clustering$K))
+markov_df <- as.data.frame(matrix(1:(markov_clustering$K), nrow = markov_clustering$K, 
+                                          dimnames = list(NULL, "id")))
+markov_df$name <- NA
+markov_df$id <- unique(markov_clustering$Cluster)
+for (id in markov_df$id)
+{
+  labels <- V(network_graph_no_genes)[markov_clustering$Cluster == id]$X1
+  labels <- labels[labels != "Multiple"]
+  
+  value <- which.max(unlist(table(labels)))
+  
+  if (length(value) != 0)
+  {
+    markov_df$name[markov_df$id == id] <- names(value)[1]
+  }
+  else
+  {
+    markov_df$name[markov_df$id == id] <- "Multiple"
+  }
+}
+
+for (n in 1:length(markov_clustering$Cluster))
+{
+  nodes_results$Markov[n] <- markov_df$name[markov_clustering$Cluster[n] == markov_df$id]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Markov,
+                         E(network_graph_no_genes)$weight, "Markov Clusters")
+##Leiden Algorithm
+ad_matrix = as_adj(network_graph_no_genes, type="both", attr="weight")
+leiden_clustering = leiden(ad_matrix,resolution_parameter = 86)
+leiden_clustering = make_clusters(network_graph_no_genes,membership = leiden_clustering)
+leiden_df <- label_cluster(leiden_clustering)
+for (n in 1:length(leiden_clustering$membership))
+{
+  nodes_results$Leiden[n] <- leiden_df$name[leiden_clustering$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Leiden,
+                         E(network_graph_no_genes)$weight, "Leiden Clusters")
+##Leading EigenVector
+lead_eigen <- cluster_leading_eigen(network_graph_no_genes, weights = E(network_graph_no_genes)$weight)
+print(paste("Leading Eigen Communities: ", max(lead_eigen$membership)))
+lead_eigen_df <- label_cluster(lead_eigen)
+for (n in 1:length(lead_eigen$membership))
+{
+  nodes_results$Lead_eigen[n] <- lead_eigen_df$name[lead_eigen$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Lead_eigen,
+                         E(network_graph_no_genes)$weight, "Leading eigenvector Clusters")
