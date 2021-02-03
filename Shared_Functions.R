@@ -34,7 +34,7 @@ plot_graph <- function(graph, layout, measure, node_s1, node_s2, node_s3, label,
                                       as.character(label), NA), size=2), 
                    show.legend = FALSE) +
     scale_size_continuous(range=c(1, 10)) +
-    theme_graph(base_size = 11, base_family = "sans") +
+    theme_graph(base_size = 11, base_family = "serif") +
     ggtitle(title) 
 }
 
@@ -45,7 +45,7 @@ plot_clustering_graph <- function(graph, layout, fill, edge_width, title){
     scale_fill_gradientn(colours = rainbow(length(fill))) + # rainbow_hcl(num_cluster)) +
     scale_edge_width_continuous(range=c(0.2,0.9)) +
     scale_size_continuous(range=c(1, 10)) +
-    theme_graph(base_size = 11, base_family = "sans") +
+    theme_graph(base_size = 11, base_family = "serif") +
     ggtitle(title) 
 }
 
@@ -56,8 +56,8 @@ plot_clustering_graph_with_legend <- function(graph, layout, fill, edge_width, t
     scale_fill_manual(values = rainbow(length(table(fill)))) +
     scale_edge_width_continuous(range=c(0.2,0.9)) +
     labs(fill="Clusters") +
-    guides(fill = guide_legend(title = "Clusters", title.position = "top"), col = guide_legend(ncol = 5)) +
-    theme_graph(base_size = 11, base_family = "sans") +
+    guides(fill = guide_legend(title = "Cluster Colors", title.position = "top"), col = guide_legend(ncol = 5)) +
+    theme_graph(base_size = 11, base_family = "serif") +
     theme(legend.position = "bottom", legend.text=element_text(size=8)) +
     ggtitle(title) 
 }
@@ -83,4 +83,12 @@ plot_pretty_graph_centrality <- function(graph, layout, measure, edge_width, nod
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
+}
+
+confusion_matrix = function(list1, list2){
+  finalList = union(list1,list2)
+  list1[list1=="Multiple"] = list2[list1=="Multiple"]
+  list1[list1=="Unclassified"] = list2[list1=="Unclassified"]
+  new_table = table(factor(list1,finalList),factor(list2,finalList))
+  return(confusionMatrix(new_table))
 }

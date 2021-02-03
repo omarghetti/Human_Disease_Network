@@ -1,5 +1,5 @@
 ## Libraries and Graph Loading
-source("Utils.R")
+source("Shared_Functions.R")
 libraries <- c("ggraph","igraph","dplyr","readr", "DiagrammeR", "tidyverse", "Cairo", 
                "networkD3","CINNA","scales","pander")
 import_libraries(libraries)
@@ -178,24 +178,17 @@ label_cluster <- function(clusters)
   
   return(cluster_df)
 }
-
 #defining data-frame to compare clusters
-nodes_results <- nodes %>% filter(X1 != "gene") %>% select(-X0)
-nodes_results$girvannewmann <- NA
-nodes_results$Louvain <- NA
-nodes_results$Fastgreedy <- NA
-nodes_results$Markov <- NA
-nodes_results$Leiden <- NA
-nodes_results$Lead_eigen <- NA
-
+clustering_result <- nodes %>% filter(X1 != "gene") %>% select(-X0)
 #Girvan-Newmann
 girvan_newmann = cluster_edge_betweenness(network_graph_no_genes,directed=FALSE,
                                           weights=E(network_graph_no_genes)$weight) 
 print(paste("GN Number Of Communities:",max(girvan_newmann$membership)))
 girvannewmann_df = label_cluster(girvan_newmann)
+clustering_result$girvannewmann <- NA
 for (n in 1:length(girvan_newmann$membership))
 {
-  nodes_results$girvannewmann[n] = girvannewmann_df$name[girvan_newmann$membership[n]]
+  clustering_result$girvannewmann[n] = girvannewmann_df$name[girvan_newmann$membership[n]]
 }
 plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$girvannewmann,
                          E(network_graph_no_genes)$weight, "Girvan Newman")
@@ -205,9 +198,10 @@ louvain_clustering = cluster_louvain(network_graph_no_genes, weights = E(network
 
 print(paste("Louvain Number Of Communities:",max(louvain_clustering$membership)))
 louvain_df = label_cluster(louvain_clustering)
+clustering_result$Louvain <- NA
 for (n in 1:length(louvain_clustering$membership))
 {
-  nodes_results$Louvain[n] = louvain_df$name[louvain_clustering$membership[n]]
+  clustering_result$Louvain[n] = louvain_df$name[louvain_clustering$membership[n]]
 }
 plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Louvain,
                                   E(network_graph_no_genes)$weight, "Louvain")
@@ -217,12 +211,26 @@ fastgreedy_clusters  = cluster_fast_greedy(network_graph_no_genes, modularity = 
 
 print(paste("Fastgreedy communities: ", max(fastgreedy_clusters$membership)))
 fgreedy_df <- label_cluster(fastgreedy_clusters)
+clustering_result$Fastgreedy <- NA
 for (n in 1:length(fastgreedy_clusters$membership))
 {
-  nodes_results$Fastgreedy[n] <- fgreedy_df$name[fastgreedy_clusters$membership[n]]
+  clustering_result$Fastgreedy[n] <- fgreedy_df$name[fastgreedy_clusters$membership[n]]
 }
 plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Fastgreedy,
                          E(network_graph_no_genes)$weight, "Fastgreedy")
+##Leiden
+mat = as_adj(network_graph_no_genes, type = "both", attr = "weight")
+leiden_clustering <- leiden(mat, resolution_parameter = 86)
+print(max(leiden_clustering))
+leiden_clustering <- make_clusters(network_graph_no_genes, membership = leiden_clustering)
+leiden_df <- label_cluster(leiden_clustering)
+clustering_result$Leiden = NA
+for (n in 1:length(leiden_clustering$membership))
+{
+  clustering_result$Leiden[n] <- leiden_df$name[leiden_clustering$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Leiden,
+                         E(network_graph_no_genes)$weight, "Leiden")
 ##Markov Clustering
 mat = as_adj(network_graph_no_genes,type = "both",attr = "weight")
 markov_clustering = mcl(mat,addLoops = FALSE, inflation=4, allow1 = TRUE)
@@ -247,31 +255,91 @@ for (id in markov_df$id)
     markov_df$name[markov_df$id == id] <- "Multiple"
   }
 }
-
+clustering_result$Markov <- NA
 for (n in 1:length(markov_clustering$Cluster))
 {
-  nodes_results$Markov[n] <- markov_df$name[markov_clustering$Cluster[n] == markov_df$id]
+  clustering_result$Markov[n] <- markov_df$name[markov_clustering$Cluster[n] == markov_df$id]
 }
 plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Markov,
                          E(network_graph_no_genes)$weight, "Markov Clusters")
-##Leiden Algorithm
-ad_matrix = as_adj(network_graph_no_genes, type="both", attr="weight")
-leiden_clustering = leiden(ad_matrix,resolution_parameter = 86)
-leiden_clustering = make_clusters(network_graph_no_genes,membership = leiden_clustering)
-leiden_df <- label_cluster(leiden_clustering)
-for (n in 1:length(leiden_clustering$membership))
-{
-  nodes_results$Leiden[n] <- leiden_df$name[leiden_clustering$membership[n]]
-}
-plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Leiden,
-                         E(network_graph_no_genes)$weight, "Leiden Clusters")
 ##Leading EigenVector
 lead_eigen <- cluster_leading_eigen(network_graph_no_genes, weights = E(network_graph_no_genes)$weight)
 print(paste("Leading Eigen Communities: ", max(lead_eigen$membership)))
 lead_eigen_df <- label_cluster(lead_eigen)
+clustering_result$Lead_eigen = NA
 for (n in 1:length(lead_eigen$membership))
 {
-  nodes_results$Lead_eigen[n] <- lead_eigen_df$name[lead_eigen$membership[n]]
+  clustering_result$Lead_eigen[n] <- lead_eigen_df$name[lead_eigen$membership[n]]
 }
 plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Lead_eigen,
                          E(network_graph_no_genes)$weight, "Leading eigenvector Clusters")
+##Ground-Truth for comparison
+groundtruth_clusters = unique(V(network_graph_no_genes)$X1)
+i = 1
+for (value in groundtruth_clusters){
+  V(network_graph_no_genes)[V(network_graph_no_genes)$X1 == value]$color = i
+  i = i + 1
+}
+
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes$X1[nodes$X0 == "disease"], 
+                         E(network_graph_no_genes)$weight, "Groundtruth Clustering")
+
+#Comparing Algorithm Results
+#Purity
+install.packages("e1071")
+p_frame = data.frame(matrix(ncol = 23, nrow = 7))
+colnames(p_frame) = c(groundtruth_clusters,"Purity Measure")
+rownames(p_frame) = c("newmann","louvain","fgreedy","leiden","markov","lead_eigen","avg")
+
+for(i in 4:length(clustering_result)){
+  cmatrix = confusion_matrix(clustering_result$X1,clustering_result[,i])
+  p_frame[i-3, ]=unname(c(diag(cmatrix$table/rowSums(cmatrix$table)),
+                          cmatrix$overall[1])) 
+}
+p_frame$Multiple = NULL
+p_frame$Unclassified = NULL
+p_frame[7, ] = colMeans(p_frame[c(1:6), ])
+p_frame = as.data.frame(t(p_frame))
+panderOptions('table.split.table',8*15)
+pander(format(p_frame))
+#F-Measure
+f_frame = data.frame(matrix(ncol = 1, nrow = 6))
+for(i in 4:length(clustering_result)){
+  cmatrix = confusion_matrix(clustering_result$X1,clustering_result[,i])
+  f_frame[i-3, ] = sum(cmatrix$byClass[ ,7], na.rm = TRUE) / 22
+}
+colnames(f_frame) = c("F-Measure")
+rownames(f_frame) = c("newmann","louvain","fgreedy","leiden","markov","lead_eigen")
+pander(f_frame)
+
+#Normalized Mutual Information
+mutualinfo_df <- data.frame(matrix(ncol = 1, nrow = 6))
+colnames(mutualinfo_df) <- c("NMI")
+rownames(mutualinfo_df) <- c("newmann", "louvain", "fgreedy", "leiden",
+                      "markov", "lead_eigen")
+
+for (i in 1:nrow(mutualinfo_df))
+{
+  groundtruth = clustering_result[, 3]
+  clusters = clustering_result[, 3 + i]
+  groundtruth[groundtruth == "Multiple"] <- clusters[groundtruth == "Multiple"]
+  groundtruth[groundtruth == "Unclassified"] <- clusters[groundtruth == "Unclassified"]
+  mutualinfo_df[i, ] <- NMI(groundtruth, clusters)
+}
+pander(format(mutualinfo_df))
+
+#Adjusted Rand Index
+install.packages("aricode")
+rand_df = data.frame(matrix(ncol=1,nrow=6))
+colnames(rand_df) = c("Adjusted Rand Index")
+rownames(rand_df) = c("newmann", "louvain", "fgreedy", "leiden",
+                      "markov", "lead_eigen")
+for (i in 1:nrow(rand_df))
+{
+  groundtruth <- clustering_result[, 3]
+  clusters <- clustering_result[, 3 + i]
+  groundtruth[groundtruth == "Multiple"] <- clusters[groundtruth == "Multiple"]
+  groundtruth[groundtruth == "Unclassified"] <- clusters[groundtruth == "Unclassified"]
+  rand_df[i, ] <- ARI(groundtruth, clusters)
+}
+pander(format(rand_df))
