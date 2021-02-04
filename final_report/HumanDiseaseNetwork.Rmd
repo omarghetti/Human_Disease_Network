@@ -84,7 +84,7 @@ histogram_plot(network_degree$res,seq(0,180,by=20),"n_degree","freq","Degree Cen
 
 analyzing the results, it's clear that a lot of nodes have a centrality value close to 1, and, given the number, it's fair to say that genes are the main cause of this behaviour cause the majority of them have 1 as degree.
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 #Directed Graph: In and Out Degree
 odegree = centr_degree(network_graph, mode="out",normalized=TRUE)
 histogram_plot(odegree$res, seq(0,20,by=20),"outdegree","freq","OutDegree")
@@ -168,4 +168,258 @@ V(network_graph)$label[order(prank$vector, decreasing=TRUE)][1:10]
 print("top 10 nodes for Eigenvector")
 V(network_graph)$label[order(eigenv$vector, decreasing=TRUE)][1:10] 
 ```
+
+From the results, it's possible to see that a lot of the diseases that have high values for this measures are related to various form of cancer. Colon Cancer takes the firts place for both Pagerank and Eigenvector.
+
+# Clustering
+
+## Clustering Coefficient
+Clustering Coefficient is used to measure how dense the network is. High values of Clustering Coefficient means that the network presents a high number of edges, and that is likely to have a lot of clusters in the network
+
+```{r echo=FALSE}
+g_trans <- transitivity(network_graph, type="global",isolates="zero")
+l_trans <- transitivity(network_graph, type="local",isolates="zero")
+transitivity_recap <- data.frame(matrix(ncol=1, nrow=2))
+colnames(transitivity_recap) <- "Values"
+rownames(transitivity_recap) <- c("Local Transitivity Average","Global Transitivity")
+transitivity_recap[1,1] <- mean(l_trans)
+transitivity_recap[2,1] <- g_trans
+pander(transitivity_recap,digits=4,justify="center")
+```
+
+Values for the network are quite low for both local and global transitivity values, and so evaluating community detection algorithms on this network could be quite difficult. Giving the fact that, for every measure of centrality analyzed, nodes representing genes had always the lowest scores, it's better to remove them from the network, cause probably they are just contributing to create confusion during the clustering phase. Moreover, in this particular network two nodes are connected only if the diseases represented are sharing a common gene, so the presence of the genes itself became redundant.
+On top of that, edges weight has been tweaked to represent the number of genes shared by the nodes connected by a certain edge and the network has been transformed to an undirected one to facilitate operations.
+
+
+```{r echo=FALSE}
+#Moving To a Non-Directed Graph to facilitate the Clustering Analysis, Recalculating Weights
+for(i in 1:length(edges[, 5])){
+  e = edges[i, ]
+  source_node = V(network_graph)[as.character(e$Source)]
+  target_node = V(network_graph)[as.character(e$Target)]
+  neigh_source_node = neighborhood(network_graph,nodes=source_node)[[1]]
+  neigh_target_node = neighborhood(network_graph,nodes=target_node)[[1]]
+  neigh_source_node = as.numeric(neigh_source_node[neigh_source_node&X1 == "gene"])
+  neigh_target_node = as.numeric(neigh_target_node[neigh_target_node&X1 == "gene"])
+  new_weight = length(intersect(neigh_source_node,neigh_target_node))
+  edges[i, ]$weight = new_weight
+}
+
+new_graph = graph.data.frame(edges,directed=FALSE,vertices=nodes)
+
+#REMOVING GENES
+network_graph_no_genes = induced_subgraph(new_graph,which(nodes$X1 != "gene"))
+network_graph_no_genes = igraph::simplify(network_graph_no_genes)
+ggraph(network_graph_no_genes, layout="graphopt") +
+  geom_edge_fan(aes(width=E(network_graph_no_genes)$weight), colour= "gray66",show.legend = FALSE) +
+  geom_node_point(fill= "#00FF00",
+                  shape=21, col="gray15", show.legend = FALSE) +
+  scale_edge_width_continuous(range=c(0.2,0.9)) +
+  scale_size_continuous(range=c(1, 10)) +
+  theme_graph(base_size = 11, base_family = "sans") +
+  ggtitle("Human Disease Network With Genes Removed") 
+
+paste("N° di nodi del grafo finale: ", vcount(network_graph_no_genes))
+paste("N° di archi del grafo finale: ", ecount(network_graph_no_genes))
+
+```
+
+
+The network in this state is well manageable and easily visualizable, with less nodes and less edges. It's possible to see that some of the clusters are becoming more visibile.
+It's also in a better state regarding Clustering Coefficient measures, as the new results are way better than the previous one.
+
+```{r echo=FALSE}
+g_trans <- transitivity(network_graph_no_genes, type="global",isolates="zero")
+l_trans <- transitivity(network_graph_no_genes, type="local",isolates="zero")
+transitivity_recap <- data.frame(matrix(ncol=1, nrow=2))
+colnames(transitivity_recap) <- "Values"
+rownames(transitivity_recap) <- c("Local Transitivity Average","Global Transitivity")
+transitivity_recap[1,1] <- mean(l_trans)
+transitivity_recap[2,1] <- g_trans
+pander(transitivity_recap,digits=4,justify="center")
+```
+
+
+## Algorithms
+Without any attribute related to nodes, it's impossbile to go for traditional clustering algorithms, and so community detection and graph partitioning ones are the way to go. 
+The chosen algorithms for this project are:
+- Girvann-Newmann
+- Louvain
+- Leiden
+- Fastgreedy
+- Markov
+- Leading Eigenvector
+Those algortithms have been chosen after looking at some state-of-the-art works on clustering techniques.
+Prior to show result of the analisys, it's worth noting that every cluster will be labeled via the most frequent label inside of it, and that the final results will be stored in a matrix that will be used for a Groundtruth comparison.
+
+```{r echo=FALSE}
+#Function to label clusters
+label_cluster <- function(clusters)
+{
+  cluster_df <-
+    as.data.frame(matrix(
+      1:length(clusters),
+      nrow = length(clusters),
+      dimnames = list(NULL, "id")
+    ))
+  
+  for (c in 1:length(clusters))
+  {
+    labels <- V(network_graph_no_genes)[clusters[[c]]]$X1
+    labels <- labels[which(labels != "Multiple" & labels != "Unclassified")]
+    
+    if (length(labels) != 0)
+    {
+      value <- which.max(unlist(table(labels)))
+      cluster_df$name[cluster_df$id == c] <- names(value)[1]
+    } else
+    {
+      cluster_df$name[cluster_df$id == c] <- V(network_graph_no_genes)[clusters[[c]]]$X1[1]
+    }
+  }
+  
+  return(cluster_df)
+}
+#defining data-frame to compare clusters
+clustering_result <- nodes %>% filter(X1 != "gene") %>% select(-X0)
+
+```
+
+
+## Girvan-Newmann
+
+Girvan-Newmann algorithm works with the idea that edges that are connecting different clusters of the network should have a high value of edge betweenness. It's considered an Hierarch-centric algorithm
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+  girvan_newmann = cluster_edge_betweenness(network_graph_no_genes,directed=FALSE,
+                                            weights=E(network_graph_no_genes)$weight) 
+  girvannewmann_df = label_cluster(girvan_newmann)
+  clustering_result$girvannewmann <- NA
+  for (n in 1:length(girvan_newmann$membership))
+  {
+    clustering_result$girvannewmann[n] = girvannewmann_df$name[girvan_newmann$membership[n]]
+  }
+  plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$girvannewmann,
+                           E(network_graph_no_genes)$weight, "Girvan Newman")
+  
+  print(paste("GN Number Of Communities:",max(girvan_newmann$membership)))
+
+```
+
+
+## Louvain and Leiden 
+Those two algorithms are presented toghether cause Leiden is considered a natural evolution of Louvain. Louvain is a clustering algorithm based on the concept of modularity maximization. Leiden is a more recent and updated version of this algorithm, way faster and with the possibility of decide pre execution the number of clusters. It's expected to be the most performant algorithm from those selected for this project for those reasons.
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+louvain_clustering = cluster_louvain(network_graph_no_genes, weights = E(network_graph_no_genes)$weights)
+
+print(paste("Louvain Number Of Communities:",max(louvain_clustering$membership)))
+louvain_df = label_cluster(louvain_clustering)
+clustering_result$Louvain <- NA
+for (n in 1:length(louvain_clustering$membership))
+{
+  clustering_result$Louvain[n] = louvain_df$name[louvain_clustering$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Louvain,
+                                  E(network_graph_no_genes)$weight, "Louvain")
+##Clustering Section
+libraries = c("scales","gridExtra","leiden","pander","MCL","caret","aricode")
+import_libraries(libraries)
+mat = as_adj(network_graph_no_genes, type = "both", attr = "weight")
+leiden_clustering <- leiden(mat, resolution_parameter = 86)
+print(max(leiden_clustering))
+leiden_clustering <- make_clusters(network_graph_no_genes, membership = leiden_clustering)
+leiden_df <- label_cluster(leiden_clustering)
+clustering_result$Leiden = NA
+for (n in 1:length(leiden_clustering$membership))
+{
+  clustering_result$Leiden[n] <- leiden_df$name[leiden_clustering$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Leiden,
+                         E(network_graph_no_genes)$weight, "Leiden")
+```
+
+
+from the results, we can see that the improvement is tangible, with Leiden detecting a lot more cluster than Louvain. This will surely impact on measures like purity
+
+## Markov
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##Markov Clustering
+mat = as_adj(network_graph_no_genes,type = "both",attr = "weight")
+markov_clustering = mcl(mat,addLoops = FALSE, inflation=4, allow1 = TRUE)
+print(paste("Markov Communities:",markov_clustering$K))
+markov_df <- as.data.frame(matrix(1:(markov_clustering$K), nrow = markov_clustering$K, 
+                                          dimnames = list(NULL, "id")))
+markov_df$name <- NA
+markov_df$id <- unique(markov_clustering$Cluster)
+for (id in markov_df$id)
+{
+  labels <- V(network_graph_no_genes)[markov_clustering$Cluster == id]$X1
+  labels <- labels[labels != "Multiple"]
+  
+  value <- which.max(unlist(table(labels)))
+  
+  if (length(value) != 0)
+  {
+    markov_df$name[markov_df$id == id] <- names(value)[1]
+  }
+  else
+  {
+    markov_df$name[markov_df$id == id] <- "Multiple"
+  }
+}
+clustering_result$Markov <- NA
+for (n in 1:length(markov_clustering$Cluster))
+{
+  clustering_result$Markov[n] <- markov_df$name[markov_clustering$Cluster[n] == markov_df$id]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Markov,
+                         E(network_graph_no_genes)$weight, "Markov Clusters")
+```
+
+
+also in this case, it's possible to see that a the number of clusters identifed is way higher than Louvain and Girvann-Newmann: Markov algorithm works on the principle that a random walk in a graph G that visits a cluster will exit from it only when it has visited the majority of his edges.
+
+## Fastgreedy
+
+Fastgreedy is another algorithm that works on Modularity Maximization. It starts by taking every node as a community, and iterating over the network it groups nodes to get to the limit of the modularity.
+
+```{r echo=FALSE}
+fastgreedy_clusters  = cluster_fast_greedy(network_graph_no_genes, modularity = TRUE,
+                                           weights = E(network_graph_no_genes)$weight)
+
+print(paste("Fastgreedy communities: ", max(fastgreedy_clusters$membership)))
+fgreedy_df <- label_cluster(fastgreedy_clusters)
+clustering_result$Fastgreedy <- NA
+for (n in 1:length(fastgreedy_clusters$membership))
+{
+  clustering_result$Fastgreedy[n] <- fgreedy_df$name[fastgreedy_clusters$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Fastgreedy,
+                         E(network_graph_no_genes)$weight, "Fastgreedy")
+```
+
+
+results, as for the other algorithms related to modularity maximization, are pretty low, with just 26 clusters found.
+
+## Leading Eigenvector
+
+Leading Eigenvector is another modularity maximization based algorithm that works on the principle of dividing the network in two components at every iteration, reaching the maximum limit of modularity. As for the other modularity maximization algorithms, it's expected to perform badly because of the difficulty of recognizing clusters with just 1 element
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lead_eigen <- cluster_leading_eigen(network_graph_no_genes, weights = E(network_graph_no_genes)$weight)
+print(paste("Leading Eigen Communities: ", max(lead_eigen$membership)))
+lead_eigen_df <- label_cluster(lead_eigen)
+clustering_result$Lead_eigen = NA
+for (n in 1:length(lead_eigen$membership))
+{
+  clustering_result$Lead_eigen[n] <- lead_eigen_df$name[lead_eigen$membership[n]]
+}
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Lead_eigen,
+                         E(network_graph_no_genes)$weight, "Leading eigenvector Clusters")
+
+```
+
+
 

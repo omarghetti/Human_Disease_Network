@@ -7,6 +7,12 @@ import_libraries <- function(libraries_list) {
   libraries(libraries_list)
 }
 
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+
 # Plots
 histogram_plot <- function(mapping, scale, x_lab, y_lab, title){
   #gg <- 
@@ -25,7 +31,7 @@ histogram_plot <- function(mapping, scale, x_lab, y_lab, title){
 plot_graph <- function(graph, layout, measure, node_s1, node_s2, node_s3, label, label_s1, title){
   ggraph(graph, layout=layout) + #  "graphopt""
     geom_edge_fan(colour = "gray66") +
-    geom_node_point(aes(fill="red", 
+    geom_node_point(aes(fill="blue", 
                         size=ifelse(measure > node_s1, 30,
                                     ifelse(measure > node_s2,  8, 
                                            ifelse(measure > node_s3,  3, 1)))),
@@ -33,17 +39,6 @@ plot_graph <- function(graph, layout, measure, node_s1, node_s2, node_s3, label,
     geom_node_text(aes(label = ifelse(measure > label_s1, 
                                       as.character(label), NA), size=2), 
                    show.legend = FALSE) +
-    scale_size_continuous(range=c(1, 10)) +
-    theme_graph(base_size = 11, base_family = "serif") +
-    ggtitle(title) 
-}
-
-plot_clustering_graph <- function(graph, layout, fill, edge_width, title){
-  ggraph(graph, layout=layout) + #  "graphopt" "kk" "dh"
-    geom_edge_fan(aes(width=edge_width), colour = "gray66", show.legend = FALSE) +
-    geom_node_point(aes(fill=fill), shape=21, col="grey25", size=3, show.legend = FALSE) +
-    scale_fill_gradientn(colours = rainbow(length(fill))) + # rainbow_hcl(num_cluster)) +
-    scale_edge_width_continuous(range=c(0.2,0.9)) +
     scale_size_continuous(range=c(1, 10)) +
     theme_graph(base_size = 11, base_family = "serif") +
     ggtitle(title) 
@@ -60,29 +55,6 @@ plot_clustering_graph_with_legend <- function(graph, layout, fill, edge_width, t
     theme_graph(base_size = 11, base_family = "serif") +
     theme(legend.position = "bottom", legend.text=element_text(size=8)) +
     ggtitle(title) 
-}
-
-plot_pretty_graph_centrality <- function(graph, layout, measure, edge_width, node_s1, node_s2, node_s3, label, label_s1, title){
-  ggraph(graph, layout=layout) + #  "graphopt""
-    geom_edge_fan(aes(width=edge_width), colour = "gray66", show.legend = FALSE) +
-    geom_node_point(aes(fill=nodes$X1[nodes$X0 == "disease"],
-                        size=ifelse(measure > node_s1, 30,
-                                    ifelse(measure > node_s2,  8, 
-                                           ifelse(measure > node_s3,  3, 1)))),
-                    shape=21, col="grey25", show.legend = FALSE) +
-    geom_node_text(aes(label = ifelse(measure > label_s1, 
-                                      as.character(label), NA), size=2), 
-                   show.legend = FALSE) +
-    #labs(fill="Cluster", size="Degree") +
-    scale_edge_width_continuous(range=c(0.2,0.9)) +
-    scale_size_continuous(range=c(1, 10)) +
-    theme_graph(base_size = 11, base_family = "sans") +
-    ggtitle(title) 
-}
-
-Mode <- function(x) {
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
 }
 
 confusion_matrix = function(list1, list2){
