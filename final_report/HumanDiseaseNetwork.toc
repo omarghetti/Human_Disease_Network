@@ -1,0 +1,7 @@
+\contentsline {section}{\numberline {1}Introduction}{1}{section.1}%
+\contentsline {section}{\numberline {2}Data Exploration}{1}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Network Exploration}{1}{subsection.2.1}%
+\contentsline {section}{\numberline {3}Centrality Analisys}{2}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Degree Centrality}{2}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Betweenness}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Closeness}{6}{subsection.3.3}%

@@ -30,9 +30,9 @@ print(paste("Genes Number:", sum(V(network_graph)$X1 == "gene")))
 print(paste("Diseases Number:", sum(V(network_graph)$X1!="gene")))
 print(paste("Edges Number:", ecount(network_graph)))
 
-##Centrality
+#Centrality
 #Degree Centrality
-network_degree <- centr_degree(network_graph,mode="all",normalized = TRUE)
+network_degree = centr_degree(network_graph,mode="all",normalized = TRUE)
 
 histogram_plot(network_degree$res,seq(0,180,by=20),"n_degree","freq","Degree Centrality")
 

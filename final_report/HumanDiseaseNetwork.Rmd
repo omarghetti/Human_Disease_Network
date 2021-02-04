@@ -1,0 +1,171 @@
+---
+author: "Omar Ghetti 793181"
+title: "Human Disease Network"
+description: "Data Analitycs Final Project"
+output:
+  bookdown::pdf_book:
+    includes:
+      before_body: frontespizio.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This project aims to make a complete rundown over the Human Disease Network, exploring the data and evaluating clustering algorithms to find correlations between different nodes, that in this precise case are representing the different diseases.
+Two diseases are connected to each other only if they share at least one gene in which mutations are associated with both diseases.Different State-of-the-art analysis over the network proved that some of those genes tend to group in well distinct clusters, while a big part of them tend to isolate themself at the borders of the network, or to avoid to group in general. The aim of the project is to validate those results and to test some community-detection algorithms over the network, to see if the results are comparable to the state-of-the-art analisys.
+The network presented by the researchers presents 22 defined diseases classes, defining an initial groundtruth useful for the final comparison with the algorithms results.
+
+# Data Exploration
+
+## Network Exploration
+
+First of all, a panoramic view on the data presented in the dataset is useful to start looking at the network, so a console printing of the data is presented, followed by a first network representation made with ggraph library
+
+```{r include=FALSE}
+## Libraries and Graph Loading
+source("../Shared_Functions.R")
+libraries <- c("ggraph","igraph","dplyr","readr", "DiagrammeR", "tidyverse", "Cairo", 
+               "networkD3","CINNA","scales","pander")
+import_libraries(libraries)
+edges <- read.csv("../Dataset/diseasome [Edges].csv", head=TRUE)
+nodes <- read.csv("../Dataset/diseasome [Nodes].csv", head=TRUE)
+
+## Cleaning
+nodes <- nodes %>% select(-timeset)
+edges <- edges %>% select(-timeset,-label)
+
+network_graph <- graph.data.frame(edges,directed = TRUE, vertices = nodes)
+```
+
+```{r echo=FALSE}
+print(network_graph, e=TRUE, v=TRUE)
+
+```
+
+```{r graph,echo=FALSE,cache=TRUE}
+ggraph(network_graph, layout="graphopt") +
+  geom_edge_fan(colour="grey15",show.legend = TRUE) +
+  geom_node_point(fill= ifelse(nodes$X0 == "gene", "#00FF00", "#0D98BA"), 
+                  shape=23, col="grey15", show.legend = TRUE) +
+  scale_size_continuous(range=c(1, 10)) +
+  theme_graph(base_size = 11, base_family = "serif") +
+  ggtitle("Human Disease Network")
+
+```
+
+In this graph, genes are highlighted in Green, while diseases are highlited in Blue. It's possible to see that the network is quite wide, consisting of more than 3000 nodes and more than 1000 vertices.
+the gene class is also more represented than the disease one, presenting two times the number of gene. It's also important to note that we are working with a directed graph.
+
+```{r echo=FALSE}
+print(paste("Vertices Number:", vcount(network_graph)))
+print(paste("Genes Number:", sum(V(network_graph)$X1 == "gene")))
+print(paste("Diseases Number:", sum(V(network_graph)$X1!="gene")))
+print(paste("Edges Number:", ecount(network_graph)))
+
+```
+
+
+# Centrality Analisys
+
+## Degree Centrality
+
+giving the fact that the graph is a directed graph, analisys over degree will take count of Outdegree and Indegree for a certain node, cause in the case of a directed graph both are present. Nodes with high degree will be considered as Hubs for the network, and the idea is that they will be central in clusters. values for degree centrality are normalized.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Degree Centrality
+network_degree = centr_degree(network_graph,mode="all",normalized = TRUE)
+
+histogram_plot(network_degree$res,seq(0,180,by=20),"n_degree","freq","Degree Centrality")
+```
+
+
+analyzing the results, it's clear that a lot of nodes have a centrality value close to 1, and, given the number, it's fair to say that genes are the main cause of this behaviour cause the majority of them have 1 as degree.
+
+```{r echo=FALSE}
+#Directed Graph: In and Out Degree
+odegree = centr_degree(network_graph, mode="out",normalized=TRUE)
+histogram_plot(odegree$res, seq(0,20,by=20),"outdegree","freq","OutDegree")
+idegree = centr_degree(network_graph, mode="in",normalized=TRUE)
+histogram_plot(idegree$res, seq(0,20,by=20),"indegree","freq","InDegree")
+
+```
+
+looking specifically at indegree numbers and outdegree numbers, it's possible to see that no one of the genes present an outgoing edge, and they just have one entering edge. it's now presented a rank of the top and bottom 10 nodes for degree.
+
+```{r echo=FALSE}
+print("TOP 10 NODES FOR DEGREE")
+V(network_graph)$label[order(network_degree$res, decreasing = TRUE)][1:10]
+print("BOTTOM 10 NODES FOR DEGREE")
+V(network_graph)$label[order(network_degree$res, decreasing = FALSE)][1:10]
+```
+
+as expected from the histograms, all the top 10 nodes are diseases, while all the bottom 10 are genes.
+
+## Betweenness
+Betweenness is a measure that represents how central is a node based on how many shortest paths on the totality of them present the selected node. this is a more robust metric to evaluate centrality of a node because is not only based on the node itsefl. The measure is calculated in his normalized variant.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+b_cetr = betweenness(network_graph,v=V(network_graph),directed=TRUE,normalized=TRUE)
+histogram_plot(b_cetr, c(0,1),"betweenness","freq","Betweenness Centrality") 
+
+```
+
+as for the degree measure, a lot of nodes sits on a low value of betweenness. Just 5 of the nodes have a quite higher value of Betweenness, and it's expected that they will be hubs.
+Those are the top nodes for Betweenness:
+
+```{r echo=FALSE}
+V(network_graph)$label[order(b_cetr, decreasing = TRUE)][1:10]
+
+```
+
+## Closeness
+
+Closeness is a measure that highlights the ability of a node to spread informations effectively and quickly. Is based on the average farness of a node from the other ones. It's expected that nodes with high closeness have short distances from other nodes. This measure is pretty unrelevant when the network is undirected, but we are working over a dircted network so it's worth having this measure.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+c_centr <- closeness(network_graph, vids=V(network_graph),mode="all",normalized=TRUE)
+histogram_plot(c_centr,c(0,1), "Closeness","Freq","Closeness")
+
+```
+
+The values of normalized closeness centrality are always between 0 and 1. In this case, values are balanced in the middle of the scale, with just 10 nodes scoring 0.
+
+## Pagerank & Eigenvector Centrality
+
+Pagerank and Eigenvector are two similar measures that are useful to understand how nodes influence other nodes in the network. Nodes with high Eigenvector scores are more likely to have lot of influence on other nodes in the network. The procedure is close to the degree centrality one, but it goes one step further, checking also connections of the nodes connected to the node in exam. A node can have an high degree but low Eigenvector, because it's connections could be with other low scoring nodes. Pagerank, invented by Google, differs from eigenvector because scores nodes on the incoming links, and so it's pretty unrelevant in undirected networks.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+eigenv <- eigen_centrality(network_graph,directed=TRUE)
+histogram_plot(eigenv$vector, c(0,1),"eigen_N","Freq","Eigenvector")
+prank <- page_rank(network_graph,vids=V(network_graph),directed = TRUE)
+histogram_plot(prank$vector,c(0,1),"Pagerank","Freq","Pagerank")
+
+
+```
+
+
+as expected, a lot of nodes are scoring really low on both the measures, and there are just 4-5 nodes that are reaching high values. It's expected that those nodes will be very important inside the network. Graph is now plotted with node dimensions regulated by those two measures:
+
+```{r graph_prank, echo=FALSE, warning=FALSE}
+plot_graph(network_graph, "dh", prank$vector, 0.003, 0.001, 0.0007, nodes$label, 0.003,
+           "Pagerank Centrality")
+
+```
+
+```{r graph_eigen, echo=FALSE, warning=FALSE}
+plot_graph(network_graph, "dh", eigenv$vector, 0.55, 0.04, 0.00005, nodes$label, 0.55, 
+           "Eigenvector Centrality")
+```
+
+Top 5 nodes for Eigenvector and Pagerank are also presented:
+
+```{r echo=FALSE}
+print("top 10 nodes for Pagerank")
+V(network_graph)$label[order(prank$vector, decreasing=TRUE)][1:10]
+print("top 10 nodes for Eigenvector")
+V(network_graph)$label[order(eigenv$vector, decreasing=TRUE)][1:10] 
+```
+
