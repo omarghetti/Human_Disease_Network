@@ -12,10 +12,7 @@ Mode <- function(x) {
   ux[which.max(tabulate(match(x, ux)))]
 }
 
-
-# Plots
 histogram_plot <- function(mapping, scale, x_lab, y_lab, title){
-  #gg <- 
   ggplot(mapping=aes(x=mapping)) + 
     geom_histogram(col="black", fill="#8B0000") + 
     stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, size=3) +
@@ -24,14 +21,12 @@ histogram_plot <- function(mapping, scale, x_lab, y_lab, title){
     labs(x=x_lab, y=y_lab) +
     ggtitle(title) +
     theme_bw()
-  
-  #  gg + geom_density(aes(mapping, y=..scaled.., fill="#FF6666"), alpha=.2)
 }
 
 plot_graph <- function(graph, layout, measure, node_s1, node_s2, node_s3, label, label_s1, title){
   ggraph(graph, layout=layout) + #  "graphopt""
     geom_edge_fan(colour = "gray66") +
-    geom_node_point(aes(fill="blue", 
+    geom_node_point(aes(fill="yellow", 
                         size=ifelse(measure > node_s1, 30,
                                     ifelse(measure > node_s2,  8, 
                                            ifelse(measure > node_s3,  3, 1)))),

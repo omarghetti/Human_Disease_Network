@@ -1,7 +1,22 @@
 \contentsline {section}{\numberline {1}Introduction}{1}{section.1}%
-\contentsline {section}{\numberline {2}Data Exploration}{1}{section.2}%
-\contentsline {subsection}{\numberline {2.1}Network Exploration}{1}{subsection.2.1}%
-\contentsline {section}{\numberline {3}Centrality Analisys}{2}{section.3}%
-\contentsline {subsection}{\numberline {3.1}Degree Centrality}{2}{subsection.3.1}%
+\contentsline {section}{\numberline {2}Data Exploration}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Network Exploration}{2}{subsection.2.1}%
+\contentsline {section}{\numberline {3}Centrality Analisys}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Degree Centrality}{3}{subsection.3.1}%
 \contentsline {subsection}{\numberline {3.2}Betweenness}{5}{subsection.3.2}%
 \contentsline {subsection}{\numberline {3.3}Closeness}{6}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Pagerank \& Eigenvector Centrality}{6}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Clustering}{9}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Clustering Coefficient}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Algorithms}{10}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Girvan-Newmann}{10}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Louvain and Leiden}{10}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Markov}{12}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Fastgreedy}{12}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}Leading Eigenvector}{13}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}Groundtruth}{14}{subsection.4.8}%
+\contentsline {section}{\numberline {5}Final Comparison}{15}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Purity}{15}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Normalized Mutal Information}{15}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Adjusted Rand Index}{16}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Concusions and Further Developments}{16}{section.6}%

@@ -219,8 +219,8 @@ ggraph(network_graph_no_genes, layout="graphopt") +
   theme_graph(base_size = 11, base_family = "sans") +
   ggtitle("Human Disease Network With Genes Removed") 
 
-paste("N° di nodi del grafo finale: ", vcount(network_graph_no_genes))
-paste("N° di archi del grafo finale: ", ecount(network_graph_no_genes))
+paste("Nodes: ", vcount(network_graph_no_genes))
+paste("Edges: ", ecount(network_graph_no_genes))
 
 ```
 
@@ -299,7 +299,7 @@ Girvan-Newmann algorithm works with the idea that edges that are connecting diff
   {
     clustering_result$girvannewmann[n] = girvannewmann_df$name[girvan_newmann$membership[n]]
   }
-  plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$girvannewmann,
+  plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$girvannewmann,
                            E(network_graph_no_genes)$weight, "Girvan Newman")
   
   print(paste("GN Number Of Communities:",max(girvan_newmann$membership)))
@@ -320,7 +320,7 @@ for (n in 1:length(louvain_clustering$membership))
 {
   clustering_result$Louvain[n] = louvain_df$name[louvain_clustering$membership[n]]
 }
-plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Louvain,
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Louvain,
                                   E(network_graph_no_genes)$weight, "Louvain")
 ##Clustering Section
 libraries = c("scales","gridExtra","leiden","pander","MCL","caret","aricode")
@@ -374,7 +374,7 @@ for (n in 1:length(markov_clustering$Cluster))
 {
   clustering_result$Markov[n] <- markov_df$name[markov_clustering$Cluster[n] == markov_df$id]
 }
-plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Markov,
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Markov,
                          E(network_graph_no_genes)$weight, "Markov Clusters")
 ```
 
@@ -396,7 +396,7 @@ for (n in 1:length(fastgreedy_clusters$membership))
 {
   clustering_result$Fastgreedy[n] <- fgreedy_df$name[fastgreedy_clusters$membership[n]]
 }
-plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Fastgreedy,
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Fastgreedy,
                          E(network_graph_no_genes)$weight, "Fastgreedy")
 ```
 
@@ -416,10 +416,110 @@ for (n in 1:length(lead_eigen$membership))
 {
   clustering_result$Lead_eigen[n] <- lead_eigen_df$name[lead_eigen$membership[n]]
 }
-plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes_results$Lead_eigen,
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", clustering_result$Lead_eigen,
                          E(network_graph_no_genes)$weight, "Leading eigenvector Clusters")
 
 ```
 
 
+## Groundtruth
 
+as said before, the network presents 22 different classes of diseases that nodes are associated with. Plotting a graph highlighting those classes can be useful to evidence if nodes belonging to the same class are close to each other.
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+groundtruth_clusters = unique(V(network_graph_no_genes)$X1)
+i = 1
+for (value in groundtruth_clusters){
+  V(network_graph_no_genes)[V(network_graph_no_genes)$X1 == value]$color = i
+  i = i + 1
+}
+
+plot_clustering_graph_with_legend(network_graph_no_genes, "graphopt", nodes$X1[nodes$X0 =="disease"], E(network_graph_no_genes)$weight, "Groundtruth Clustering")
+
+```
+
+as expected, nodes associated with the cancer class are very close, with few outliers, while for example nodes associated with Nutritional and Neurological classes are more sparse in the network
+
+# Final Comparison
+
+## Purity
+
+Purity is a measure that indicates how well a community can represent an entire class. In other words, purity indicates how many nodes for a class have been classified correctly in a cluster. Value ranges from 0 to 1, with one only reached if a cluster is completely representing an entire class.
+Looking and the numbers from the various algorithms used, it's expected that Leiden will have the higher value of purity, because it's detecting even the smallest clusters in the network.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Purity
+p_frame = data.frame(matrix(ncol = 23, nrow = 7))
+colnames(p_frame) = c(groundtruth_clusters,"Purity Measure")
+rownames(p_frame) = c("newmann","louvain","leiden","markov","fastgreedy","lead_eigen","avg")
+
+for(i in 4:length(clustering_result)){
+  cmatrix = confusion_matrix(clustering_result$X1,clustering_result[,i])
+  p_frame[i-3, ]=unname(c(diag(cmatrix$table/rowSums(cmatrix$table)),
+                          cmatrix$overall[1])) 
+}
+p_frame$Multiple = NULL
+p_frame$Unclassified = NULL
+p_frame[7, ] = colMeans(p_frame[c(1:6), ])
+p_frame = as.data.frame(t(p_frame))
+panderOptions('table.split.table',8*15)
+pander(format(p_frame))
+
+
+```
+
+as expected, Leiden is scoring 0.81, while especially modularity maximization based algortihms are scoring a maximum of 0.6 in purity measure. Markov is the second top scorer, with a value of 0.74, close to the Leiden one.
+
+## Normalized Mutal Information
+
+Normalized Mutual Information is the normalized version of Mutual Information. Mutual Information measures the mutual dependence between two clusters in the network.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+mutualinfo_df <- data.frame(matrix(ncol = 1, nrow = 6))
+colnames(mutualinfo_df) <- c("NMI")
+rownames(mutualinfo_df) <- c("newmann", "louvain", "leiden", "markov",
+                      "fastgreedy", "lead_eigen")
+
+for (i in 1:nrow(mutualinfo_df))
+{
+  groundtruth = clustering_result[, 3]
+  clusters = clustering_result[, 3 + i]
+  groundtruth[groundtruth == "Multiple"] <- clusters[groundtruth == "Multiple"]
+  groundtruth[groundtruth == "Unclassified"] <- clusters[groundtruth == "Unclassified"]
+  mutualinfo_df[i, ] <- NMI(groundtruth, clusters)
+}
+pander(format(mutualinfo_df))
+
+```
+
+Leiden has a pretty high value for Mutual Information compared to the other Modularity Maximization algorithms, scoring above 0.7, Markov came second for this measure too, with a value of 0.64, close to the Leiden one.
+
+## Adjusted Rand Index
+
+The Adjusted Rand Index is the corrected-for-chance version of the Rand index. Such a correction for chance establishes a baseline by using the expected similarity of all pair-wise comparisons between clusterings specified by a random model.
+
+```{r echo=FALSE,warning=FALSE,message=FALSE}
+rand_df = data.frame(matrix(ncol=1,nrow=6))
+colnames(rand_df) = c("Adjusted Rand Index")
+rownames(rand_df) = c("newmann", "louvain", "leiden", "markov",
+                      "fastgreedy", "lead_eigen")
+for (i in 1:nrow(rand_df))
+{
+  groundtruth <- clustering_result[, 3]
+  clusters <- clustering_result[, 3 + i]
+  groundtruth[groundtruth == "Multiple"] <- clusters[groundtruth == "Multiple"]
+  groundtruth[groundtruth == "Unclassified"] <- clusters[groundtruth == "Unclassified"]
+  rand_df[i, ] <- ARI(groundtruth, clusters)
+}
+pander(format(rand_df))
+
+
+```
+
+even for this measure, Leiden and Markov are still the top performers, scoring values above 0.5 and getting closer to 1.
+
+# Concusions and Further Developments
+
+The analysis presented proved that finding clusters on this network was a pretty hard task: the majority of the algorithms proposed in this paper scored badly for clustering measures and just Leiden algorithm and Markov Algorithm came close to a good result in finding clusters. The analisys was mainly conducted focusing on old state-of-the-art Modularity Maximization based algorithms, that proved to not be a good choice overall. if a choice has to be made, Leiden is the right algorithm for a task like this one, considering the fact that is a pretty new discovery (2019) and it's an improved version of Louvain algorithm, another famous state-of-the-art algorithm. 
+Further developments on this task include trying other categories of algorithms, like the graph partitioning ones, or maybe try a complete analisys over the original network, without removing genes, to prove the fact that they are just adding more confusion in the clustering process
