@@ -5,7 +5,7 @@ description: "Data Analitycs Final Project"
 output:
   bookdown::pdf_book:
     includes:
-      before_body: frontespizio.tex
+      before_body: firstpage.tex
 ---
 
 ```{r setup, include=FALSE}
