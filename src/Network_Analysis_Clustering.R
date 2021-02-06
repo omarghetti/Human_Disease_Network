@@ -104,8 +104,8 @@ ggraph(network_graph_no_genes, layout="graphopt") +
   theme_graph(base_size = 11, base_family = "sans") +
   ggtitle("Human Disease Network With Genes Removed") 
 
-paste("N° di nodi del grafo finale: ", vcount(network_graph_no_genes))
-paste("N° di archi del grafo finale: ", ecount(network_graph_no_genes))
+paste("Nodes: ", vcount(network_graph_no_genes))
+paste("Edges: ", ecount(network_graph_no_genes))
 
 #New Graph Network Analysis
 #Degree Centrality
