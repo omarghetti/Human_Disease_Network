@@ -10,6 +10,9 @@ nodes <- read.csv("Dataset/diseasome [Nodes].csv", head=TRUE)
 nodes <- nodes %>% select(-timeset)
 edges <- edges %>% select(-timeset,-label)
 
+network_graph <- graph_from_data_frame(edges,directed = TRUE, vertices=nodes)
+nd3_graph <- igraph_to_networkD3(network_graph,group,what = "both")
+
 network_graph <- graph.data.frame(edges,directed = TRUE, vertices=nodes)
 
 #Console Printing of the graph
