@@ -11,7 +11,7 @@ nodes <- nodes %>% select(-timeset)
 edges <- edges %>% select(-timeset,-label)
 
 network_graph <- graph_from_data_frame(edges,directed = TRUE, vertices=nodes)
-nd3_graph <- igraph_to_networkD3(network_graph,group,what = "both")
+nd3_graph <- igraph_to_networkD3(network_graph,group=nodes$X1,what = "both")
 
 network_graph <- graph.data.frame(edges,directed = TRUE, vertices=nodes)
 
@@ -105,7 +105,7 @@ ggraph(network_graph_no_genes, layout="graphopt") +
   scale_edge_width_continuous(range=c(0.2,0.9)) +
   scale_size_continuous(range=c(1, 10)) +
   theme_graph(base_size = 11, base_family = "sans") +
-  ggtitle("Human Disease Network With Genes Removed") 
+  ggtitle("Human Disease Network With Genes Removed")
 
 paste("Nodes: ", vcount(network_graph_no_genes))
 paste("Edges: ", ecount(network_graph_no_genes))
