@@ -58,10 +58,10 @@ for(i in 1:length(edges[,3])){
 }
 
 new_graph = graph_from_data_frame(edges,directed=FALSE,vertices=nodes)
-network_graph_no_genes = induced_subgraph(new_graph,which(nodes$X1 != "gene"))
-network_graph_no_genes = igraph::simplify(network_graph_no_genes)
+network_graph_ng = induced_subgraph(new_graph,which(nodes$X1 != "gene"))
+network_graph_ng = igraph::simplify(network_graph_ng)
 nodes_no_genes = nodes[nodes$X1!="gene", ]
-nd3_graph_new = igraph_to_networkD3(network_graph_no_genes,group=nodes_no_genes$X1,what = "both")
+nd3_graph_new = igraph_to_networkD3(network_graph_ng,group=nodes_no_genes$X1,what = "both")
 network_g_new <- forceNetwork(Links=nd3_graph_new[["links"]], 
                           Nodes=nd3_graph_new[["nodes"]], 
                           Source="source", 
@@ -78,6 +78,9 @@ network_g_new <- forceNetwork(Links=nd3_graph_new[["links"]],
                           height = 1000,
                           radiusCalculation ="Math.sqrt(d.nodesize)+1"
 )
+clustering_graph = graph.data.frame(edges,directed=FALSE,vertices=nodes)
+network_graph_no_genes = induced_subgraph(clustering_graph,which(nodes$X1 != "gene"))
+network_graph_no_genes = igraph::simplify(network_graph_no_genes)
 label_cluster <- function(clusters)
 {
     cluster_df <-
